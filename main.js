@@ -17,7 +17,12 @@ let circles = [];
 /** @type {Plane[]} */
 let planes = [];
 
-/** @type {(Circle|Plane)[]} */
+/** @type {Box[]} */
+let boxes = [];
+
+/** @typedef {(Circle|Plane|Box)} Geom */
+
+/** @type {Geom[]} */
 let geoms = [];
 
 function brightColor(hue) {
@@ -37,11 +42,11 @@ function setup() {
 
     const w = width / 2;
     const h = height / 2;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 5; i++) {
         let c = new Circle(
             createVector(random(-w, w), random(-h, h), 0),
             random(10, 100));
-        c.mat = new Material(brightColor(random(360)));
+        // c.mat = new Material(brightColor(random(360)));
         circles.push(c);
     }
 
@@ -52,7 +57,17 @@ function setup() {
         planes.push(p);
     }
 
-    geoms = [...circles, ...planes];
+    // create boxes
+    for (let i = 0; i < 1; i++) {
+        let b = new Box(
+            createVector(random(-w, w), random(-h, h)),
+            createVector(random(20, 50), 0),
+            createVector(0, random(20, 50)),
+            createVector(0, 0, 1));
+        boxes.push(b);
+    }
+
+    geoms = [...circles, ...planes, ...boxes];
 }
 
 /**
@@ -73,6 +88,7 @@ function mouseReleased() {
     rays.push(r);
 
     let path = tracePath(r, geoms, rays);
+    path.col = r.col; // overwrite path "color"
     paths.push(path);
 
     console.log("RAYS DONE");
@@ -105,6 +121,14 @@ function draw() {
     for (const circ of circles) {
         fill(vecToColor(circ.mat.color));
         ellipse(circ.c.x, circ.c.y, 2 * circ.r);
+    }
+    noFill();
+
+    // draw boxes
+    rectMode(RADIUS);
+    for (const b of boxes) {
+        fill(vecToColor(b.mat.color));
+        rect(b.c.x, b.c.y, b.w.x, b.h.y);
     }
     noFill();
 

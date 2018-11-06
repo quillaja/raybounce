@@ -79,6 +79,25 @@ class Plane {
     }
 }
 
+class Box {
+    /**
+     * 
+     * @param {p5.Vector} center 
+     * @param {p5.Vector} wface 
+     * @param {p5.Vector} hface 
+     * @param {p5.Vector} dface 
+     */
+    constructor(center, wface, hface, dface) {
+        this.c = center.copy();
+        this.w = wface.copy();
+        this.h = hface.copy();
+        this.d = dface.copy();
+        this.mat = new Material();
+    }
+}
+
+const _epsilon = 0.0001;
+
 /**
  * 
  * @param {p5.Vector} from 
@@ -92,13 +111,17 @@ function dir(from, to) {
 /**
  * 
  * @param {p5.Vector} point 
- * @param {(Circle|Plane)} geom 
+ * @param {Geom} geom 
  */
 function normal(point, geom) {
     if (geom instanceof Circle) {
         return dir(geom.c, point);
     } else if (geom instanceof Plane) {
         return geom.n;
+    } else if (geom instanceof Box) {
+        if (geom._lastNormal != null) {
+            return geom._lastNormal;
+        }
     }
 
     throw new Error("incorrect geom");
@@ -206,21 +229,61 @@ function rayPlane(ray, plane) {
     let denom = p5.Vector.dot(ray.d, plane.n);
     if (denom == 0) {
         return [];
-    } else {
-        return [p5.Vector.dot(p5.Vector.sub(plane.p, ray.o), plane.n) / denom];
     }
+    let t = p5.Vector.dot(p5.Vector.sub(plane.p, ray.o), plane.n) / denom;
+    return [t];
 }
 
 /**
  * 
  * @param {Ray} ray 
- * @param {Circle|Plane} geom 
+ * @param {Box} box 
+ */
+function rayBox(ray, box) {
+    // test all 6 faces, find closest intersection,
+    // test if the point is within (on) the box by Point-Center,
+    // and checking -1 <= (P-C)·Face <= 1 for each face's vector.
+
+    let t = Number.POSITIVE_INFINITY;
+    let minNormal = null;
+    box._lastNormal = null;
+    for (const f of [box.w, box.w.copy().mult(-1), box.h, box.h.copy().mult(-1), box.d, box.d.copy().mult(-1)]) {
+        const faceplane = new Plane(p5.Vector.add(box.c, f), f);
+        let maybe = rayPlane(ray, faceplane);
+        if (maybe.length > 0 && maybe[0] >= _epsilon && maybe[0] < t) {
+            t = maybe[0];
+            minNormal = f.copy().normalize();
+        }
+    }
+
+    if (!Number.isFinite(t)) { return []; } // did we even get a valid t?
+
+    let p = ray.point(t);
+    let PC = p5.Vector.sub(p, box.c);
+    let a = Math.abs(PC.dot(box.w) / box.w.magSq()) <= 1 + _epsilon;
+    let b = Math.abs(PC.dot(box.h) / box.h.magSq()) <= 1 + _epsilon;
+    let c = Math.abs(PC.dot(box.d) / box.d.magSq()) <= 1 + _epsilon;
+    if (a && b && c) {
+        console.log(p, PC, t, minNormal);
+        box._lastNormal = minNormal;
+        return [t];
+    }
+
+    return [];
+}
+
+/**
+ * 
+ * @param {Ray} ray 
+ * @param {Geom} geom 
  */
 function rayGeom(ray, geom) {
     if (geom instanceof Circle) {
         return rayCircle(ray, geom);
     } else if (geom instanceof Plane) {
         return rayPlane(ray, geom);
+    } else if (geom instanceof Box) {
+        return rayBox(ray, geom);
     }
 
     throw new Error("incorrect geom");
@@ -229,16 +292,14 @@ function rayGeom(ray, geom) {
 /**
  * find nearest point of nearest geom where ray intersects
  * @param {Ray} r 
- * @param {(Circle|Plane)[]} geoms 
+ * @param {Geom[]} geoms 
  */
 function findNearestIntersection(r, geoms) {
-    const epsilon = 0.0001;
-
     let min = { t: Number.POSITIVE_INFINITY, geom: null };
     for (const g of geoms) {
         let tlist = rayGeom(r, g);
         for (const t of tlist) {
-            if (t < min.t && t > epsilon) {
+            if (t < min.t && t > _epsilon) {
                 min.t = t;
                 min.geom = g;
             }
@@ -250,7 +311,7 @@ function findNearestIntersection(r, geoms) {
 /**
  * 
  * @param {Ray} r 
- * @param {(Circle|Plane)[]} geoms 
+ * @param {Geom[]} geoms 
  * @param {Ray[]} rayList 
  * @param {number} maxBounces 
  * @returns {Path}
@@ -285,7 +346,7 @@ function tracePath(r, geoms, rayList = undefined, maxBounces = 50) {
 /**
  * recursive
  * @param {Ray} r 
- * @param {(Circle|Plane)[]} geoms 
+ * @param {Geom[]} geoms 
  * @param {number} depth 
  * @returns {[p5.Vector[], p5.Vector]}
  */
@@ -294,7 +355,7 @@ function shootRay(r, geoms, depth) {
     let hit = findNearestIntersection(r, geoms);
 
     if (depth == 0 || hit.geom == null) {
-        console.log("base", Material.WhiteEmitter.emit);
+        // console.log("base", Material.WhiteEmitter.emit);
         return [[r.point(5000)], Material.WhiteEmitter.emit];
     }
 
@@ -304,6 +365,6 @@ function shootRay(r, geoms, depth) {
     let [pts, inCol] = shootRay(new Ray(p, reflectD), geoms, depth - 1);
     // is something weird with the calculated color (col)?
     let col = renderingEquation(hit.geom.mat, inCol);
-    console.log(col);
+    // console.log(col);
     return [[p, ...pts], col];
 }
