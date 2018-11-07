@@ -42,7 +42,7 @@ function setup() {
 
     const w = width / 2;
     const h = height / 2;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 15; i++) {
         let c = new Circle(
             createVector(random(-w, w), random(-h, h), 0),
             random(10, 100));
@@ -58,11 +58,11 @@ function setup() {
     }
 
     // create boxes
-    for (let i = 0; i < 1; i++) {
+    for (let i = 0; i < 5; i++) {
         let b = new Box(
             createVector(random(-w, w), random(-h, h)),
-            createVector(random(20, 50), 0),
-            createVector(0, random(20, 50)),
+            createVector(random(20, 100), 0),
+            createVector(0, random(20, 100)),
             createVector(0, 0, 1));
         boxes.push(b);
     }
