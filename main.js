@@ -1,9 +1,3 @@
-
-/**
- * @type {Ray[]}
- */
-let rays = [];
-
 /**
  * @type {Path[]}
  */
@@ -85,9 +79,8 @@ function mouseReleased() {
     let dragEnd = getCartesianMouse();
     let r = new Ray(dragStart, dir(dragStart, dragEnd));
     r.col = brightColor(random(360));
-    rays.push(r);
 
-    let path = tracePath(r, geoms, rays);
+    let path = tracePath(r, geoms);
     path.col = r.col; // overwrite path "color"
     paths.push(path);
 
@@ -109,12 +102,6 @@ function draw() {
 
     pushCartesian();
     noFill();
-
-    // draw rays
-    // for (const r of rays) {
-    //     stroke(r.col);
-    //     line(r.o.x, r.o.y, r.o.x + 2000 * r.d.x, r.o.y + 2000 * r.d.y);
-    // }
 
     // draw circles
     noStroke();

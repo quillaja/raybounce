@@ -11,6 +11,7 @@ class Material {
             this.color = colorToVec(col);
         }
         this.specularity = 1;
+        this.n = 1;
     }
 
     static get WhiteEmitter() {
@@ -43,4 +44,34 @@ function renderingEquation(mat, inCol) {
     let col = createVector(inCol.x * matCol.x, inCol.y * matCol.y, inCol.z * matCol.z);
     col.add(mat.emit);
     return col;
+}
+
+/**
+ * 
+ * @param {p5.Vector} incident 
+ * @param {p5.Vector} surfaceNormal 
+ * @param {number} n1 
+ * @param {number} n2 
+ * @returns {[number,number]}
+ */
+function schlick(incident, surfaceNormal, n1, n2) {
+    // R = r0 + (1-r0)(1-N⋅I)^5
+    // r0 = ((n1-n2)/(n1+n2))^2
+    // R = reflective power
+    // N = surface normal (normalized)
+    // I = incident light (normalized)
+    // n1, n2 = indicies of refraction
+    // T = 1-R = transmitted power (refracted)
+    let r0 = Math.pow((n1 - n2) / (n1 + n2), 2);
+    let r = r0 + (1 - r0) * Math.pow(1 - surfaceNormal.dot(incident), 5);
+    return [r, 1 - r];
+}
+
+/**
+ * 
+ * @param {number} n1 the higher of the 2 indicies of refraction
+ * @param {number} n2 the lower of the 2
+ */
+function criticalAngle(n1, n2) {
+    return Math.asin(n2 / n1);
 }

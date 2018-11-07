@@ -134,6 +134,8 @@ function reflectionDir(incident, surfaceNormal) {
     // reflection = I − 2(I⋅N)*N
     // I = incident ray (normalized)
     // N = surface normal
+    // does NOT rely on I and N being in opposite or same directions.
+    // gives same result (a good thing)
     incident = incident.copy().normalize();
     let IdotN = p5.Vector.dot(incident, surfaceNormal)
     return p5.Vector.sub(incident, p5.Vector.mult(surfaceNormal, 2 * IdotN));
@@ -150,6 +152,9 @@ function refractionDir(incident, surfaceNormal, n1, n2) {
     // refraction = r*I + (r*c - sqrt(1-r^2*(1-c^2)))*N
     // I = incident ray (normalized)
     // N = surface normal
+    // r = n1/n2
+    // c = -I⋅N
+    // c MUST be positive.
     incident = incident.copy().normalize();
     let r = n1 / n2;
     let c = -p5.Vector.dot(incident, surfaceNormal);
@@ -193,27 +198,6 @@ function rayCircle(ray, circ) {
     // should be unreachable
     return null;
 }
-
-// /**
-//  *  
-//  * @param {Ray} ray1 
-//  * @param {Ray} ray2 
-//  * @returns {number[]} t1, t2. parametric points on ray1 and ray2 respectively.
-//  */
-// function rayRay(ray1, ray2) {
-//     // t1 = |v2 × v1| / v2 · v3
-//     // t2 = v1 · v3 / v2 · v3
-
-//     let v1 = p5.Vector.sub(ray1.o, ray2.o);
-//     let v2 = ray2.d;
-//     let v3 = createVector(-ray1.d.y, ray1.d.x);
-
-//     let denom = p5.Vector.dot(v2, v3);
-//     let t1 = p5.Vector.cross(v2, v1).mag() / denom;
-//     let t2 = p5.Vector.dot(v1, v3) / denom;
-
-//     return [t1, t2];
-// }
 
 /**
  * 
@@ -305,28 +289,16 @@ function findNearestIntersection(r, geoms) {
         }
     }
     return min;
-    // TODO: re-write above to work correctly
-    // let hits = [];
-    // for (const g of geoms) {
-    //     hits.push(...rayGeom(r, g));
-    // }
-    // hits = hits.sort((a, b) => a.t - b.t).filter(a => a.t > _epsilon);
-    // if (hits.length > 0) {
-    //     return hits[0];
-    // }
-
-    // return null;
 }
 
 /**
  * basically just starts the shootRay() recursive func and repackages the result.
  * @param {Ray} r 
  * @param {Geom[]} geoms 
- * @param {Ray[]} rayList 
  * @param {number} maxBounces 
  * @returns {Path}
  */
-function tracePath(r, geoms, rayList = undefined, maxBounces = 50) {
+function tracePath(r, geoms, maxBounces = 50) {
     let path = new Path(r.col);
     let [bounces, col] = shootRay(r, geoms, maxBounces);
     path.col = vecToColor(col);
@@ -352,6 +324,12 @@ function shootRay(r, geoms, depth) {
 
     let p = hit.p;
     let reflectD = reflectionDir(r.d, hit.n);
+    // TODO:
+    // 1) check if material is transparent
+    // 2) if yes, check critical angle for total internal reflection
+    // 3) if not total internal reflection, use schlick approx to figure out
+    //    reflected/refracted portions
+    // 4) cast new rays for appropriate reflections/refractions
 
     let [pts, inCol] = shootRay(new Ray(p, reflectD), geoms, depth - 1);
     // is something weird with the calculated color (col)?
